@@ -35,32 +35,54 @@ contract Patricia {
         }
         return res;
     }
-   
+
+    function readSize(bytes rlp, uint idx, uint len) internal pure returns (uint) {
+        uint res = 0;
+        for (uint i = 0; i < len; i++) res += 256*res + uint8(rlp[idx+i]);
+        return res;
+    }
+
+    // length in bytes of the RLP element starting at position idx
+    function rlpByteLength(bytes rlp, uint idx) internal pure returns (uint, uint) {
+        uint8 elem = uint8(rlp[idx]);
+        if (elem < 128) return (1, 0);
+        if (elem == 128) return (0, 1);
+        if (elem >= 247) {
+            return (readSize(rlp, idx+1, elem-247), elem-247+1);
+        }
+        if (elem >= 192) {
+            return (elem - 192, 1);
+        }
+        if (elem >= 183) {
+            return (readSize(rlp, idx+1, elem-183), elem-183+1);
+        }
+        return (elem - 128, 1);
+    }
+
+    // length in bytes of the RLP element starting at position idx
+    function rlpByteSkipLength(bytes rlp, uint idx) internal pure returns (uint) {
+        uint8 elem = uint8(rlp[idx]);
+        if (elem < 128) return 1;
+        if (elem == 128) return 1;
+        if (elem >= 247) {
+            return (readSize(rlp, idx+1, elem-247) + elem-247+1);
+        }
+        if (elem >= 192) {
+            return (elem - 192 + 1);
+        }
+        if (elem >= 183) {
+            return (readSize(rlp, idx+1, elem-183) + elem-183+1);
+        }
+        return (elem - 128 + 1);
+    }
+
     // how many elements in an RLP array
-    function rlpArrayLength(bytes rlp) internal pure returns (int) {
-        uint8 elem = uint8(rlp[0]);
+    function rlpArrayLength(bytes rlp, uint idx) internal pure returns (int) {
+        uint8 elem = uint8(rlp[idx]);
         if (elem < 192 || elem >= 247) return -1;
         else return elem - 192;
     }
-   
-    // length in bytes of the RLP element starting at position idx
-    function rlpByteLength(bytes rlp, uint idx) internal pure returns (uint) {
-        uint8 elem = uint8(rlp[idx]);
-        if (elem < 128) return 1;
-        if (elem >= 183) {
-            /// umm this can be an array
-            uint n = elem - 192;
-            uint res = 1;
-            for (uint i = 0; i < n; i++) {
-                uint len = rlpByteLength(rlp, idx);
-                idx += len + 1;
-                res += len + 1;
-            }
-            return res;
-        }
-        else return elem - 128;
-    }
-   
+    
     function sliceBytes(bytes b, uint idx, uint len) internal pure returns (bytes) {
         bytes memory res = new bytes(len);
         for (uint i = 0; i < len; i++) res[i] = b[idx+i];
@@ -76,13 +98,12 @@ contract Patricia {
     function rlpFindBytes(bytes memory rlp, uint n) internal pure returns (bytes) {
         uint idx = 1;
         for (uint i = 0; i < n-1; i++) {
-            uint len = rlpByteLength(rlp, idx);
-            require (len >= 0);
-            idx += len + 1;
+            idx += rlpByteSkipLength(rlp, idx);
         }
-        len = rlpByteLength(rlp, idx);
-        require (len >= 0);
-        return sliceBytes(rlp, idx, len);
+        uint len;
+        uint szlen;
+        (len, szlen) = rlpByteLength(rlp, idx);
+        return sliceBytes(rlp, idx+szlen, len);
     }
    
     // unmangle HP encoding to boolean value and nibbles
@@ -123,7 +144,7 @@ contract Patricia {
         }
         // Branch
         // p[0] == 192+17 == 209
-        if (rlpArrayLength(p) == 17) {
+        if (rlpArrayLength(p,0) == 17) {
             if (key.length == 0) {
                 found = rlpFindBytes(p, 16);
                 state = State.FOUND;
@@ -137,7 +158,7 @@ contract Patricia {
         }
         // Leaf or extension
         // p[0] == 194
-        else if (rlpArrayLength(p) == 2) {
+        else if (rlpArrayLength(p,0) == 2) {
             bool kind;
             uint8[] memory nibbles;
             (kind, nibbles) = unhp(rlpFindBytes(p, 0));
