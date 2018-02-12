@@ -103,6 +103,14 @@ contract Patricia {
        }
    }
    
+    function matchingNibbleLength(uint8[] a, uint8[] b) internal pure returns (uint) {
+        uint len = a.length > b.length ? b.length : a.length;
+        for (uint i = 0; i < len; i++) {
+            if (a[i] != b[i]) return i;
+        }
+        return i;
+    }
+   
    function stepProof(bytes p) public {
       require(state == State.UNFINISHED);
       require(wantHash == keccak256(p));
@@ -128,11 +136,29 @@ contract Patricia {
       // Leaf or extension
       // p[0] == 194
       else if (rlpArrayLength(p) == 2) {
+          bool kind;
+          uint8[] memory nibbles;
+          (kind, nibbles) = unhp(rlpFindBytes(p, 0));
+          // seems like the kind can be ignored
+          uint mlen = matchingNibbleLength(nibbles, key);
+          if (mlen != nibbles.length) {
+              state = State.NOTFOUND;
+              return;
+          }
+          bytes memory child2 = rlpFindBytes(p, 1);
+          key = slice(key, mlen, key.length-mlen);
+          if (key.length == 0) {
+              found = child2;
+              state = State.FOUND;
+          }
+          else {
+              wantHash = bytesToBytes32(child2);
+          }
       }
       // Bad node
       else {
          revert();
       }
    }
-   
+
 }
