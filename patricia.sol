@@ -11,23 +11,6 @@ contract Patricia {
         return res;
     }
    
-    enum State {
-        UNFINISHED,
-        NOTFOUND,
-        FOUND
-    }
-   
-    uint8[] key;
-    bytes32 wantHash;
-   
-    State state;
-    bytes found;
-
-    function init(bytes _key, bytes32 root) public {
-        key = bytesToNibbles(_key);
-        wantHash = root;
-    }
-   
     function bytesToBytes32(bytes rlp) internal pure returns (bytes32) {
         bytes32 res;
         assembly {
@@ -43,7 +26,7 @@ contract Patricia {
     }
 
     // length in bytes of the RLP element starting at position idx
-    function rlpByteLength(bytes rlp, uint idx) internal pure returns (uint, uint) {
+    function rlpByteLength(bytes rlp, uint idx) public pure returns (uint, uint) {
         uint8 elem = uint8(rlp[idx]);
         if (elem < 128) return (1, 0);
         if (elem == 128) return (0, 1);
@@ -60,7 +43,7 @@ contract Patricia {
     }
 
     // length in bytes of the RLP element starting at position idx
-    function rlpByteSkipLength(bytes rlp, uint idx) internal pure returns (uint) {
+    function rlpByteSkipLength(bytes rlp, uint idx) public pure returns (uint) {
         uint8 elem = uint8(rlp[idx]);
         if (elem < 128) return 1;
         if (elem == 128) return 1;
@@ -77,10 +60,18 @@ contract Patricia {
     }
 
     // how many elements in an RLP array
-    function rlpArrayLength(bytes rlp, uint idx) internal pure returns (int) {
-        uint8 elem = uint8(rlp[idx]);
-        if (elem < 192 || elem >= 247) return -1;
-        else return elem - 192;
+    function rlpArrayLength(bytes rlp, uint idx) public pure returns (uint) {
+        uint len;
+        uint szlen;
+        (len, szlen) = rlpByteLength(rlp, idx);
+        if (len == 0) return 0;
+        uint jdx = idx+szlen;
+        uint res = 0;
+        while (jdx < len+idx) {
+            jdx += rlpByteSkipLength(rlp, jdx);
+            res++;
+        }
+        return res;
     }
     
     function sliceBytes(bytes b, uint idx, uint len) internal pure returns (bytes) {
@@ -97,7 +88,7 @@ contract Patricia {
    
     function rlpFindBytes(bytes memory rlp, uint n) internal pure returns (bytes) {
         uint idx = 1;
-        for (uint i = 0; i < n-1; i++) {
+        for (uint i = 0; i < n; i++) {
             idx += rlpByteSkipLength(rlp, idx);
         }
         uint len;
@@ -134,6 +125,23 @@ contract Patricia {
         return i;
     }
    
+    enum State {
+        UNFINISHED,
+        NOTFOUND,
+        FOUND
+    }
+   
+    uint8[] key;
+    bytes32 wantHash;
+   
+    State state;
+    bytes found;
+
+    function init(bytes _key, bytes32 root) public {
+        key = bytesToNibbles(_key);
+        wantHash = root;
+    }
+    
     function stepProof(bytes p) public {
         require(state == State.UNFINISHED);
         require(wantHash == keccak256(p));
@@ -182,6 +190,10 @@ contract Patricia {
         else {
             revert();
         }
+    }
+    
+    function debug() public view returns (bytes32, uint8[], bytes) {
+        return (wantHash, key, found);
     }
 
 }
