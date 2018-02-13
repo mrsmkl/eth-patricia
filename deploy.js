@@ -59,6 +59,17 @@ async function doDeploy() {
     process.exit(0)
 }
 
-doDeploy()
+async function doDeployTx() {
+    var accts = await web3.eth.getAccounts()
+    send_opt = {gas:4700000, from:accts[0]}
+    var c = await createContract("Transaction")
+    c.setProvider(web3.currentProvider)
+    console.log("contract address", c.options.address)
+    var res = await c.methods.check("0xf8648064830186a09401020304050607080910111213141516171819208084122334451ba0d02ed7f1d0868b5935e1e2e15e99a49a3a0e8b2f7a3c089cd34d8d978dfde1f7a0529cfe3fd05fbb32ebb4d415d35b5a9ae62c2381969d903c6d4f70fe66bd999a").call(send_opt)
+    console.log(res)
+    process.exit(0)
+}
 
+// doDeploy()
+doDeployTx()
 

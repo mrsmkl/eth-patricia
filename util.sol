@@ -22,7 +22,7 @@ contract Util {
     
     function readSize(bytes rlp, uint idx, uint len) public pure returns (uint) {
         uint res = 0;
-        for (uint i = 0; i < len; i++) res += 256*res + uint8(rlp[idx+i]);
+        for (uint i = 0; i < len; i++) res = 256*res + uint8(rlp[idx+i]);
         return res;
     }
     
@@ -130,7 +130,8 @@ contract Util {
     function arrayPrefix(uint len) public pure returns (bytes) {
         if (len < 56) {
             bytes memory res = new bytes(1);
-            res[0] = byte(len-192);
+            res[0] = byte(len+192);
+            return res;
         }
         else {
             uint ilen = integerLength(len);
