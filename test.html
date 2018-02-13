@@ -1,0 +1,64 @@
+
+<script>
+    function readSize(rlp, idx, len) {
+        var res = 0;
+        for (var i = 0; i < len; i++) res += 256*res + rlp[idx+i];
+        return res;
+    }
+
+    // length in bytes of the RLP element starting at position idx
+    function rlpByteLength(rlp, idx) {
+        var elem = rlp[idx];
+        if (elem < 128) return [1, 0];
+        if (elem == 128) return [0, 1];
+        if (elem >= 247) {
+            return [readSize(rlp, idx+1, elem-247), elem-247+1];
+        }
+        if (elem >= 192) {
+            return [elem - 192, 1];
+        }
+        if (elem >= 183) {
+            return [readSize(rlp, idx+1, elem-183), elem-183+1];
+        }
+        return [elem - 128, 1];
+    }
+
+    // length in bytes of the RLP element starting at position idx
+    function rlpByteSkipLength(rlp, idx) {
+        var elem = rlp[idx];
+        if (elem < 128) return 1;
+        if (elem == 128) return 1;
+        if (elem >= 247) {
+            return (readSize(rlp, idx+1, elem-247) + elem-247+1);
+        }
+        if (elem >= 192) {
+            return (elem - 192 + 1);
+        }
+        if (elem >= 183) {
+            return (readSize(rlp, idx+1, elem-183) + elem-183+1);
+        }
+        return (elem - 128 + 1);
+    }
+
+    // how many elements in an RLP array
+    function rlpArrayLength(rlp, idx) {
+        var len;
+        var szlen;
+        len = rlpByteLength(rlp, idx)[0];
+        szlen = rlpByteLength(rlp, idx)[1];
+        if (len == 0) return 0;
+        var jdx = idx+szlen;
+        var res = 0;
+        while (jdx < len+idx+szlen) {
+            var skip = rlpByteSkipLength(rlp, jdx);
+            jdx += skip;
+            res++;
+        }
+        return res;
+    }
+    
+    var arr = [248,58,128,128,128,128,201,132,32,101,115,116,131,111,110,101,128,128,128,128,128,128,160,215,241,119,216,15,196,250,166,128,234,164,249,61,9,52,3,50,34,230,108,4,218,137,251,144,190,7,194,224,245,110,190,128,128,128,128,128]
+    var arr1 = [226,23,160,134,97,180,49,195,176,247,20,246,126,221,205,132,143,63,142,131,107,6,212,128,198,157,102,114,191,216,23,170,17,185,136]
+</script>
+
+    

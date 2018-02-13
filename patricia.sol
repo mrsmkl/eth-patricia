@@ -19,7 +19,7 @@ contract Patricia {
         return res;
     }
 
-    function readSize(bytes rlp, uint idx, uint len) internal pure returns (uint) {
+    function readSize(bytes rlp, uint idx, uint len) public pure returns (uint) {
         uint res = 0;
         for (uint i = 0; i < len; i++) res += 256*res + uint8(rlp[idx+i]);
         return res;
@@ -40,6 +40,22 @@ contract Patricia {
             return (readSize(rlp, idx+1, elem-183), elem-183+1);
         }
         return (elem - 128, 1);
+    }
+
+    function rlpSizeLength(bytes rlp, uint idx) public pure returns (uint) {
+        uint8 elem = uint8(rlp[idx]);
+        if (elem < 128) return 0;
+        if (elem == 128) return 1;
+        if (elem >= 247) {
+            return elem-247+1;
+        }
+        if (elem >= 192) {
+            return 1;
+        }
+        if (elem >= 183) {
+            return elem-183+1;
+        }
+        return 1;
     }
 
     // length in bytes of the RLP element starting at position idx
@@ -67,7 +83,7 @@ contract Patricia {
         if (len == 0) return 0;
         uint jdx = idx+szlen;
         uint res = 0;
-        while (jdx < len+idx) {
+        while (jdx < len+idx+szlen) {
             jdx += rlpByteSkipLength(rlp, jdx);
             res++;
         }
@@ -86,15 +102,17 @@ contract Patricia {
         return res;
     }
    
-    function rlpFindBytes(bytes memory rlp, uint n) internal pure returns (bytes) {
-        uint idx = 1;
+    function rlpFindBytes(bytes memory rlp, uint n) public pure returns (bytes) {
+        uint idx = rlpSizeLength(rlp, 0);
         for (uint i = 0; i < n; i++) {
             idx += rlpByteSkipLength(rlp, idx);
         }
+        /*
         uint len;
         uint szlen;
         (len, szlen) = rlpByteLength(rlp, idx);
-        return sliceBytes(rlp, idx+szlen, len);
+        */
+        return sliceBytes(rlp, idx, rlpByteSkipLength(rlp, idx));
     }
    
     // unmangle HP encoding to boolean value and nibbles
@@ -142,6 +160,8 @@ contract Patricia {
         wantHash = root;
     }
     
+    bytes debug_child;
+    
     function stepProof(bytes p) public {
         require(state == State.UNFINISHED);
         require(wantHash == keccak256(p));
@@ -159,8 +179,12 @@ contract Patricia {
             }
             else {
                 bytes memory child = rlpFindBytes(p, uint(uint8(key[0])));
+                debug_child = child;
                 key = slice(key, 1, key.length-1);
-                if (child.length == 32) wantHash = bytesToBytes32(child);
+                if (child.length == 33) {
+                    child = sliceBytes(child,1,32);
+                    wantHash = bytesToBytes32(child);
+                }
                 else wantHash = keccak256(child);
             }
         }
@@ -183,7 +207,12 @@ contract Patricia {
                 state = State.FOUND;
             }
             else {
-                wantHash = bytesToBytes32(child2);
+                debug_child = child2;
+                if (child2.length == 33) {
+                    child2 = sliceBytes(child2,1,32);
+                    wantHash = bytesToBytes32(child2);
+                }
+                else wantHash = keccak256(child2);
             }
         }
         // Bad node
@@ -192,8 +221,8 @@ contract Patricia {
         }
     }
     
-    function debug() public view returns (bytes32, uint8[], bytes) {
-        return (wantHash, key, found);
+    function debug() public view returns (bytes32, uint8[], bytes, bytes) {
+        return (wantHash, key, found, debug_child);
     }
 
 }

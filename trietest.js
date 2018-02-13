@@ -21,6 +21,9 @@ function arr(buf) {
     return JSON.stringify(res)
 }
 
+var asd = Buffer.from("c98420657374836f6e65", "hex")
+console.log("hash of c98420657374836f6e65", util.sha3(asd).toString("hex"))
+
 function putKeys(trie, lst, cb) {
     var i = 0
     function handle() {
