@@ -10,7 +10,7 @@ contract Patricia {
         }
         return res;
     }
-   
+
     function bytesToBytes32(bytes rlp) internal pure returns (bytes32) {
         bytes32 res;
         assembly {
@@ -89,19 +89,19 @@ contract Patricia {
         }
         return res;
     }
-    
+
     function sliceBytes(bytes b, uint idx, uint len) internal pure returns (bytes) {
         bytes memory res = new bytes(len);
         for (uint i = 0; i < len; i++) res[i] = b[idx+i];
         return res;
     }
-   
+
     function slice(uint8[] storage b, uint idx, uint len) internal view returns (uint8[]) {
         uint8[] memory res = new uint8[](len);
         for (uint i = 0; i < len; i++) res[i] = b[idx+i];
         return res;
     }
-   
+
     function rlpFindBytes(bytes memory rlp, uint n) public pure returns (bytes) {
         uint idx = rlpSizeLength(rlp, 0);
         for (uint i = 0; i < n; i++) {
@@ -114,7 +114,7 @@ contract Patricia {
         */
         return sliceBytes(rlp, idx, rlpByteSkipLength(rlp, idx));
     }
-   
+
     // unmangle HP encoding to boolean value and nibbles
     function unhp(bytes b) internal pure returns (bool tval, uint8[] res) {
         uint8 elem = uint8(b[0]);
@@ -134,7 +134,7 @@ contract Patricia {
             res[idx+i*2+1] = elem1 & 15;
         }
     }
-   
+
     function matchingNibbleLength(uint8[] a, uint8[] b) internal pure returns (uint) {
         uint len = a.length > b.length ? b.length : a.length;
         for (uint i = 0; i < len; i++) {
@@ -142,7 +142,7 @@ contract Patricia {
         }
         return i;
     }
-   
+
     enum State {
         UNFINISHED,
         NOTFOUND,
@@ -220,7 +220,7 @@ contract Patricia {
             revert();
         }
     }
-    
+
     function debug() public view returns (bytes32, uint8[], bytes, bytes) {
         return (wantHash, key, found, debug_child);
     }
