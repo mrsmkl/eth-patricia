@@ -70,6 +70,6 @@ async function doDeployTx() {
     process.exit(0)
 }
 
-// doDeploy()
-doDeployTx()
+doDeploy()
+// doDeployTx()
 

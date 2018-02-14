@@ -1,36 +1,8 @@
 pragma solidity ^0.4.19;
 
-import 'util.sol';
+import './util.sol';
 
 contract Patricia is Util {
-
-    // unmangle HP encoding to boolean value and nibbles
-    function unhp(bytes b) internal pure returns (bool tval, uint8[] res) {
-        uint8 elem = uint8(b[0]);
-        uint8 flag = elem/16;
-        tval = (flag & 0x2 == 1);
-        bool even = (flag & 0x1 == 0);
-        uint len = ((b.length-1) / 2) + (even ? 0 : 1);
-        res = new uint8[](len);
-        uint idx = 0;
-        if (!even) {
-            idx = 1;
-            res[0] = elem&0xf;
-        }
-        for (uint i = 1; i < b.length; i++) {
-            uint8 elem1 = uint8(b[i]);
-            res[idx+i*2] = (elem1 / 16) & 15;
-            res[idx+i*2+1] = elem1 & 15;
-        }
-    }
-
-    function matchingNibbleLength(uint8[] a, uint8[] b) internal pure returns (uint) {
-        uint len = a.length > b.length ? b.length : a.length;
-        for (uint i = 0; i < len; i++) {
-            if (a[i] != b[i]) return i;
-        }
-        return i;
-    }
 
     enum State {
         UNFINISHED,
