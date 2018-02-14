@@ -12,6 +12,7 @@ contract Blockchain is Util {
         bytes32 transactionRoot;
         mapping (uint => bytes32) transactions; // element 1 means not found
         mapping (address => bytes32) accounts;  // element 1 means not found
+        uint numTransactions;
     }
     
     mapping (bytes32 => BlockData) block_data;
@@ -68,6 +69,13 @@ contract Blockchain is Util {
         // s
         uint s = readInteger(rlpFindBytes(tr, 8));
         return ecrecover(hash, uint8(v), bytes32(r), bytes32(s));
+    }
+    
+    function updateNumTransactions(uint blk, uint num) public {
+        BlockData storage dta = block_data[block_hash[blk]];
+        require(uint(dta.transactions[num]) == 1);
+        require(uint(dta.transactions[num-1]) > 1);
+        dta.numTransactions = num;
     }
 
     function storeTransaction(bytes tr) public {
