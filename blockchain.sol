@@ -27,7 +27,7 @@ contract Blockchain is Util {
     struct AccountData {
         bytes32 storageRoot;
         mapping (bytes32 => bytes32) stuff;
-        mapping (bytes32 => bytes32) stuff_checked;
+        mapping (bytes32 => bool) stuff_checked;
     }
 
     mapping (bytes32 => AccountData) accounts;
@@ -116,7 +116,6 @@ contract Blockchain is Util {
         uint8[] key;    
         bytes32 wantHash;
         State state;
-        bytes found;
         address owner;
         Kind kind;
         bytes32 root;
@@ -129,6 +128,7 @@ contract Blockchain is Util {
     
     function initTransaction(uint blk, uint n) public {
         Session storage s = sessions[keccak256(msg.sender, blk, n)];
+        s.owner = msg.sender;
         s.key = bytesToNibbles(rlpInteger(n));
         s.kind = Kind.TRANSACTION;
         s.root = block_hash[blk];
@@ -138,6 +138,7 @@ contract Blockchain is Util {
 
     function initAccount(uint blk, address addr) public {
         Session storage s = sessions[keccak256(msg.sender, blk, addr)];
+        s.owner = msg.sender;
         s.key = bytesToNibbles(bytes32ToBytes(keccak256(addr)));
         s.kind = Kind.ACCOUNT;
         s.root = block_hash[blk];
@@ -147,28 +148,58 @@ contract Blockchain is Util {
 
     function initStorage(bytes32 acct, bytes32 ptr) public {
         Session storage s = sessions[keccak256(msg.sender, acct, ptr)];
+        s.owner = msg.sender;
         s.key = bytesToNibbles(bytes32ToBytes(keccak256(ptr)));
         s.kind = Kind.STORAGE;
         s.root = acct;
         s.wantHash = accounts[acct].storageRoot;
         s.ptr = ptr;
     }
+    
+    function sessionNotFound(bytes32 id) internal {
+        Session storage s = sessions[id];
+        s.state = State.NOTFOUND;
+        if (s.kind == Kind.TRANSACTION) {
+            block_data[s.root].transactions[s.tr] = bytes32(uint(1));
+        }
+        else if (s.kind == Kind.ACCOUNT) {
+            block_data[s.root].accounts[s.addr] = bytes32(uint(1));
+        }
+        else if (s.kind == Kind.STORAGE) {
+            accounts[s.root].stuff_checked[s.ptr] = true;
+        }
+    }
+
+    function sessionFound(bytes32 id, bytes found) internal {
+        Session storage s = sessions[id];
+        s.state = State.FOUND;
+        if (s.kind == Kind.TRANSACTION) {
+            block_data[s.root].transactions[s.tr] = getBytes32(found);
+        }
+        else if (s.kind == Kind.ACCOUNT) {
+            block_data[s.root].accounts[s.addr] = getBytes32(found);
+        }
+        else if (s.kind == Kind.STORAGE) {
+            accounts[s.root].stuff[s.ptr] = getBytes32(found);
+            accounts[s.root].stuff_checked[s.ptr] = true;
+        }
+    }
 
     function stepProof(bytes32 id, bytes p) public {
         Session storage s = sessions[id];
+        require(s.owner == msg.sender);
         require(s.state == State.UNFINISHED);
         require(s.wantHash == keccak256(p));
         // The key cannot be found here
         if (p.length == 0) {
-            s.state = State.NOTFOUND;
+            sessionNotFound(id);
             return;
         }
         // Branch
         // p[0] == 192+17 == 209
         if (rlpArrayLength(p,0) == 17) {
             if (s.key.length == 0) {
-                s.found = rlpFindBytes(p, 16);
-                s.state = State.FOUND;
+                sessionFound(id, rlpFindBytes(p, 16));
             }
             else {
                 bytes memory child = rlpFindBytes(p, uint(uint8(s.key[0])));
@@ -189,14 +220,13 @@ contract Blockchain is Util {
             // seems like the kind can be ignored
             uint mlen = matchingNibbleLength(nibbles, s.key);
             if (mlen != nibbles.length) {
-                s.state = State.NOTFOUND;
+                sessionNotFound(id);
                 return;
             }
             bytes memory child2 = rlpFindBytes(p, 1);
             s.key = slice(s.key, mlen, s.key.length-mlen);
             if (s.key.length == 0) {
-                s.found = child2;
-                s.state = State.FOUND;
+                sessionFound(id, child2);
             }
             else {
                 if (child2.length == 33) {
