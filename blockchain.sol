@@ -75,7 +75,7 @@ contract Blockchain is Util {
         BlockData storage dta = block_data[block_hash[blk]];
         require(uint(dta.transactions[num]) == 1);
         require(uint(dta.transactions[num-1]) > 1);
-        dta.numTransactions = num;
+        dta.numTransactions = num + 1;
     }
 
     function storeTransaction(bytes tr) public {
@@ -250,7 +250,41 @@ contract Blockchain is Util {
         }
     }
 
+    // Accessors
+    function blockTransactions(uint blk) public view returns (uint) {
+        uint num = block_data[block_hash[blk]].numTransactions;
+        require (num > 0);
+        return num-1;
+    }
+    
+    function transactionSender(uint blk, uint num) public view returns (address) {
+        bytes32 tr_hash = block_data[block_hash[blk]].transactions[num];
+        require (uint(tr_hash) > 1);
+        TransactionData storage tr = transactions[tr_hash];
+        return tr.sender;
+    }
+    
+    function transactionReceiver(uint blk, uint num) public view returns (address) {
+        bytes32 tr_hash = block_data[block_hash[blk]].transactions[num];
+        require (uint(tr_hash) > 1);
+        TransactionData storage tr = transactions[tr_hash];
+        return tr.to;
+    }
+    
+    function transactionData(uint blk, uint num) public view returns (bytes) {
+        bytes32 tr_hash = block_data[block_hash[blk]].transactions[num];
+        require (uint(tr_hash) > 1);
+        TransactionData storage tr = transactions[tr_hash];
+        return tr.data;
+    }
+    
+    function accountStorage(uint blk, address addr, bytes32 ptr) public view returns (bytes32) {
+        bytes32 a_hash = block_data[block_hash[blk]].accounts[addr];
+        require (uint(a_hash) > 1);
+        AccountData storage a = accounts[a_hash];
+        require(a.stuff_checked[ptr]);
+        return a.stuff[ptr];
+    }
     
 }
-
 
