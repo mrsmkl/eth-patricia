@@ -20,6 +20,14 @@ contract Util {
         return res;
     }
     
+    function bytes32ToBytes(bytes32 a) internal pure returns (bytes) {
+        bytes memory res = new bytes(32);
+        assembly {
+            mstore(add(32,res), a)
+        }
+        return res;
+    }
+    
     function readSize(bytes rlp, uint idx, uint len) public pure returns (uint) {
         uint res = 0;
         for (uint i = 0; i < len; i++) res = 256*res + uint8(rlp[idx+i]);
@@ -143,6 +151,28 @@ contract Util {
             }
             return res2;
         }
+    }
+    
+    function rlpInteger(uint n) public pure returns (bytes) {
+        bytes memory res;
+        if (n == 0) {
+            res = new bytes(1);
+            res[0] = 0x80;
+            return res;
+        }
+        if (n < 128) {
+            res = new bytes(1);
+            res[0] = byte(uint8(n));
+            return res;
+        }
+        uint ilen = integerLength(n);
+        res = new bytes(1+ilen);
+        res[0] = byte(128+ilen);
+        for (uint i = 1; i < ilen; i++) {
+            res[ilen-i] = byte(n&0xff);
+            n = n/256;
+        }
+        return res;
     }
 
     // unmangle HP encoding to boolean value and nibbles

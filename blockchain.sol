@@ -2,6 +2,7 @@ pragma solidity ^0.4.19;
 
 import './util.sol';
 
+// Contract for mirroring needed parts of the blockchain
 contract Blockchain is Util {
 
     mapping (uint => bytes32) block_hash;
@@ -9,11 +10,27 @@ contract Blockchain is Util {
     struct BlockData {
         bytes32 stateRoot;
         bytes32 transactionRoot;
-        mapping (uint => bytes32) transactions;
-        mapping (address => bytes32) accounts;
+        mapping (uint => bytes32) transactions; // element 1 means not found
+        mapping (address => bytes32) accounts;  // element 1 means not found
+    }
+    
+    mapping (bytes32 => BlockData) block_data;
+
+    struct TransactionData {
+        address to;
+        address sender;
+        bytes data;
+    }
+    
+    mapping (bytes32 => TransactionData) transactions;
+    
+    struct AccountData {
+        bytes32 storageRoot;
+        mapping (bytes32 => bytes32) stuff;
+        mapping (bytes32 => bytes32) stuff_checked;
     }
 
-    mapping (bytes32 => BlockData) block_data;
+    mapping (bytes32 => AccountData) accounts;
 
     function storeHashes(uint n) public {
         for (uint i = 1; i <= n; i++) block_hash[block.number-i] = block.blockhash(block.number-i);
@@ -28,6 +45,12 @@ contract Blockchain is Util {
         return res;
     }
 
+    function getAddress(bytes rlp) internal pure returns (address) {
+        if (rlp.length == 0) return 0;
+        require(rlp.length == 21);
+        return address(readSize(rlp, 1, 20));
+    }
+
     function storeHeader(uint n, bytes header) public {
         // sanity check
         require(rlpArrayLength(header, 0) == 15);
@@ -35,6 +58,46 @@ contract Blockchain is Util {
         BlockData storage dta = block_data[block_hash[n]];
         dta.stateRoot = getBytes32(rlpFindBytes(header, 3));
         dta.transactionRoot = getBytes32(rlpFindBytes(header, 4));
+    }
+
+    function transactionSender(bytes32 hash, bytes tr) public pure returns (address) {
+        // w
+        uint v = readInteger(rlpFindBytes(tr, 6));
+        // r
+        uint r = readInteger(rlpFindBytes(tr, 7));
+        // s
+        uint s = readInteger(rlpFindBytes(tr, 8));
+        return ecrecover(hash, uint8(v), bytes32(r), bytes32(s));
+    }
+
+    function storeTransaction(bytes tr) public {
+        // read all the fields of transaction
+        require(rlpArrayLength(tr, 0) == 9);
+        bytes[] memory d = new bytes[](6);
+        d[0] = rlpFindBytes(tr, 0); // nonce
+        d[1] = rlpFindBytes(tr, 1); // price
+        d[2] = rlpFindBytes(tr, 2); // gas
+        d[3] = rlpFindBytes(tr, 3); // to
+        d[4] = rlpFindBytes(tr, 4); // value
+        d[5] = rlpFindBytes(tr, 5); // data
+        
+        uint len = d[0].length + d[1].length + d[2].length + d[3].length + d[4].length + d[5].length;
+        bytes32 hash = keccak256(arrayPrefix(len+3), d[0], d[1], d[2], d[3], d[4], d[5], byte(0x1c), bytes2(0x8080));
+        TransactionData storage tr_data = transactions[keccak256(tr)];
+        tr_data.sender = transactionSender(hash, tr);
+        tr_data.to = getAddress(d[3]);
+        tr_data.data = d[5]; // probably should remove RLP prefix
+    }
+
+    function storeAccount(bytes rlp) public {
+        // read all the fields of account
+        require(rlpArrayLength(rlp, 0) == 4);
+        AccountData storage a_data = accounts[keccak256(rlp)];
+        // 0 nonce
+        // 1 balance
+        // 2 storage
+        // 3 code
+        a_data.storageRoot = getBytes32(rlpFindBytes(rlp, 2));
     }
 
     enum State {
@@ -55,22 +118,42 @@ contract Blockchain is Util {
         State state;
         bytes found;
         address owner;
-        uint block;
         Kind kind;
-        uint tr;
-        address addr;
-        bytes32 storage_addr;
+        bytes32 root;
+        uint tr;        // tr number
+        bytes32 ptr;    // storage pointer
+        address addr;   // account address
     }
     
     mapping (bytes32 => Session) sessions;
-
-    function init(bytes key, bytes32 root) public {
-        Session storage s = sessions[keccak256(msg.sender, key, root)];
-        s.key = bytesToNibbles(key);
-        s.wantHash = root;
-        s.owner = msg.sender;
-    }
     
+    function initTransaction(uint blk, uint n) public {
+        Session storage s = sessions[keccak256(msg.sender, blk, n)];
+        s.key = bytesToNibbles(rlpInteger(n));
+        s.kind = Kind.TRANSACTION;
+        s.root = block_hash[blk];
+        s.wantHash = block_data[s.root].transactionRoot;
+        s.tr = n;
+    }
+
+    function initAccount(uint blk, address addr) public {
+        Session storage s = sessions[keccak256(msg.sender, blk, addr)];
+        s.key = bytesToNibbles(bytes32ToBytes(keccak256(addr)));
+        s.kind = Kind.ACCOUNT;
+        s.root = block_hash[blk];
+        s.wantHash = block_data[s.root].stateRoot;
+        s.addr = addr;
+    }
+
+    function initStorage(bytes32 acct, bytes32 ptr) public {
+        Session storage s = sessions[keccak256(msg.sender, acct, ptr)];
+        s.key = bytesToNibbles(bytes32ToBytes(keccak256(ptr)));
+        s.kind = Kind.STORAGE;
+        s.root = acct;
+        s.wantHash = accounts[acct].storageRoot;
+        s.ptr = ptr;
+    }
+
     function stepProof(bytes32 id, bytes p) public {
         Session storage s = sessions[id];
         require(s.state == State.UNFINISHED);
