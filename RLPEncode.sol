@@ -62,7 +62,7 @@ library RLPEncode {
     }
   }
 
-	function getLengthBytes(uint256 x) public pure returns (bytes b) {
+	function getLengthBytes(uint256 x) internal pure returns (bytes b) {
 		// Figure out if we need 1 or two bytes to express the length.
 		// 1 byte gets us to max 255
 		// 2 bytes gets us to max 65535 (no payloads will be larger than this)

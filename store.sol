@@ -64,6 +64,11 @@ contract Blockchain is Util {
         dta.transactionRoot = getBytes32(rlpFindBytes(header, 4));
     }
 
+    function blockData(uint n) public view returns (bytes32, bytes32) {
+        BlockData storage dta = block_data[block_hash[n]];
+        return (dta.stateRoot, dta.transactionRoot);
+    }
+
     function transactionSender(bytes32 hash, bytes tr) public pure returns (address) {
         // w
         uint v = readInteger(rlpFindBytes(tr, 6));
@@ -73,7 +78,7 @@ contract Blockchain is Util {
         uint s = readInteger(rlpFindBytes(tr, 8));
         return ecrecover(hash, uint8(v), bytes32(r), bytes32(s));
     }
-    
+
     function updateNumTransactions(uint blk, uint num) public {
         BlockData storage dta = block_data[block_hash[blk]];
         require(uint(dta.transactions[num]) == 1);
@@ -127,12 +132,19 @@ contract Blockchain is Util {
         b.accounts[addr] = aHash;
     }
 
-    
+    /*
+    function accountDebug(bytes32 aHash, address addr, bytes parentNodes, uint blk) public returns (bytes path, bool res, uint pos, bytes32 nkey, bytes nibbles) {
+        BlockData storage b = block_data[block_hash[blk]];
+        path = bytes32ToBytes(keccak256(addr));
+        (res, pos, nibbles) = MerklePatriciaProof.verifyDebug(aHash, path, parentNodes, b.stateRoot);
+    }
+    */
+
     // proof for storage
-    function storageInAccount(bytes32 aHash, bytes32 data, bytes32 ptr, bytes parentNodes, uint blk) public {
-        AccountData storage b = account_data[aHash];
+    function storageInAccount(bytes32 aHash, bytes32 data, bytes32 ptr, bytes parentNodes) public {
+        AccountData storage b = accounts[aHash];
         bytes memory path = bytes32ToBytes(ptr);
-        require(MerklePatriciaProof.verify(sHash, path, parentNodes, b.storageRoot));
+        require(MerklePatriciaProof.verify(data, path, parentNodes, b.storageRoot));
         b.stuff[ptr] = data;
         b.stuff_checked[ptr] = true;
     }
