@@ -1,6 +1,9 @@
 pragma solidity ^0.4.19;
 
-import './util.sol';
+import "./util.sol";
+import "./MerklePatriciaProof.sol";
+import './RLPEncode.sol';
+import "./BytesLib.sol";
 
 // Contract for mirroring needed parts of the blockchain
 contract Blockchain is Util {
@@ -107,6 +110,27 @@ contract Blockchain is Util {
         // 3 code
         a_data.storageRoot = getBytes32(rlpFindBytes(rlp, 2));
     }
+    
+    // proof for transaction
+    function transactionInBlock(bytes32 txHash, uint num, bytes parentNodes, uint blk) public {
+        BlockData storage b = block_data[block_hash[blk]];
+        bytes memory path = rlpInteger(num);
+        require(MerklePatriciaProof.verify(txHash, path, parentNodes, b.transactionRoot));
+        b.transactions[num] = txHash;
+    }
+
+    // proof for account
+    function accountInBlock(bytes32 aHash, address addr, bytes parentNodes, uint blk) public {
+        BlockData storage b = block_data[block_hash[blk]];
+        bytes memory path = bytes32ToBytes(keccak256(addr));
+        require(MerklePatriciaProof.verify(aHash, path, parentNodes, b.stateRoot));
+        b.accounts[addr] = aHash;
+    }
+
+    
+    // proof for storage
+    
+    /*
 
     enum State {
         UNFINISHED,
@@ -249,6 +273,7 @@ contract Blockchain is Util {
             revert();
         }
     }
+    */
 
     // Accessors
     function blockTransactions(uint blk) public view returns (uint) {

@@ -3,17 +3,17 @@ const Trie = require('merkle-patricia-tree')
 const util = require('ethereumjs-util')
 const levelup = require('levelup')
 const leveldown = require('leveldown')
+const rocksdb = require('rocksdb')
 const RLP = require('rlp')
 
 // 1) Create our store
-var db = levelup(leveldown('./mydb'))
+// var db = levelup(leveldown('./mydb'))
+var db = levelup(rocksdb('./myrocks'))
 var trie = new Trie(db)
 
-/*
 for (var i = 0; i < 1000; i++) {
   console.log(RLP.encode(i).toString("hex"))
 }
-*/
 
 function arr(buf) {
     var res = []
