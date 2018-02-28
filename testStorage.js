@@ -25,6 +25,15 @@ function hash(dta) {
     return util.sha3(Buffer.from(dta.substr(2),"hex"))
 }
 
+function make32(str) {
+    while (str.length < 64) str = "0"+str;
+    return "0x"+str
+}
+
+function hex2rlp(str) {
+    return "0x"+RLP.encode(Buffer.from(str, "hex")).toString("hex")
+}
+
 async function doDeploy() {
     var accts = await web3.eth.getAccounts()
     send_opt = {gas:4700000, from:accts[0]}
@@ -55,6 +64,15 @@ async function doDeploy() {
     var tx = await store.methods.accountInBlock("0x"+ahash.toString("hex"), store.options.address, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
     console.log("Proving account in block", tx.status)
     console.log(await store.methods.accountData(bnum, store.options.address).call(send_opt))
+    
+    var proof = await web3.eth.getStorageProof(blk.hash, store.options.address, "0x"+hash(make32("12000023000034000045000056")).toString("hex"))
+    var proof_rlp = RLP.encode(proof.map(a => RLP.decode(a)))
+    // var proof = await web3.eth.getStorageProof(blk.hash, "0x"+hash(store.options.address).toString("hex"), make32("12000023000034000045000056"))
+    console.log("storage proof", proof.map(a => [RLP.decode(a), hash(a)]))
+    console.log("cell as rlp", hex2rlp("999988887777666655554444333322221111"))
+//    console.log(await store.methods.storageDebug("0x"+ahash.toString("hex"), hex2rlp("999988887777666655554444333322221111"), make32("12000023000034000045000056"), "0x"+proof_rlp.toString("hex")).call(send_opt))
+    var tx = await store.methods.storageInAccount("0x"+ahash.toString("hex"), hex2rlp("999988887777666655554444333322221111"), make32("12000023000034000045000056"), "0x"+proof_rlp.toString("hex")).send(send_opt)
+    console.log("Proving storage of account in block", tx.status)
 }
 
 doDeploy()

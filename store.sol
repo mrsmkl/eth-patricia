@@ -10,6 +10,7 @@ contract Blockchain is Util {
 
     function Blockchain() public {
         assembly {
+            // sstore(0x00, 0x999988887777666655554444333322221111)
             sstore(0x12000023000034000045000056, 0x999988887777666655554444333322221111)
         }
     }
@@ -160,12 +161,20 @@ contract Blockchain is Util {
     }
 
     // proof for storage
-    function storageInAccount(bytes32 aHash, bytes32 data, bytes32 ptr, bytes parentNodes) public {
+    function storageInAccount(bytes32 aHash, bytes data, bytes32 ptr, bytes parentNodes) public {
         AccountData storage b = accounts[aHash];
-        bytes memory path = bytes32ToBytes(ptr);
-        require(MerklePatriciaProof.verify(data, path, parentNodes, b.storageRoot));
-        b.stuff[ptr] = data;
+        bytes memory path = bytes32ToBytes(keccak256(ptr));
+        require(MerklePatriciaProof.verify(keccak256(data), path, parentNodes, b.storageRoot));
+        RLP.RLPItem memory item = RLP.toRLPItem(data);
+        b.stuff[ptr] = RLP.toBytes32(item);
         b.stuff_checked[ptr] = true;
+    }
+
+    function storageDebug(bytes32 aHash, bytes data, bytes32 ptr, bytes parentNodes) public returns (bytes path, bool res, uint pos, bytes32 nkey, bytes nibbles) {
+        AccountData storage b = accounts[aHash];
+        path = bytes32ToBytes(keccak256(ptr));
+        nkey = b.storageRoot;
+        (res, pos, nibbles) = MerklePatriciaProof.verifyDebug(keccak256(data), path, parentNodes, b.storageRoot);
     }
 
     // Accessors

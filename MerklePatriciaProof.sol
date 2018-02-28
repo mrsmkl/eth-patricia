@@ -91,7 +91,7 @@ library MerklePatriciaProof {
             if(pathPtr > path.length) {loc = 1; res = false; return;}
 
             currentNode = RLP.toBytes(parentNodes[i]);
-            if(nodeKey != keccak256(currentNode)) { res = false; loc = 12; return;}
+            if(nodeKey != keccak256(currentNode)) { res = false; loc = 100+i; return;}
             currentNodeList = RLP.toList(parentNodes[i]);
             
             loc = currentNodeList.length;
