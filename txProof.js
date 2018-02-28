@@ -6,18 +6,47 @@
 // for easier storage, so all we need to prove from the tx is its inclusion
 // in the txHash. The txHash is proven through a different mechanism (standard
 // Merkle tree)
-const Promise = require('bluebird').Promise;
+// const Promise = require('bluebird').Promise;
 const Trie = require('merkle-patricia-tree');
 const rlp = require('rlp');
 const EthereumTx = require('ethereumjs-tx');
-const EthereumBlock = require('ethereumjs-block/from-rpc')
+// const EthereumBlock = require('ethereumjs-block/from-rpc')
 const async = require('async');
 const sha3 = require('js-sha3').keccak256;
 
 exports.build = build;
 exports.verify = verify;
 
-function build(tx, block) {
+function putTrie(trie, path, data) {
+    return new Promise((resolve, reject) => {
+        trie.put(path, data, (err) => {
+          if (err) return reject(err)
+          resolve(true)
+        })
+    })
+}
+
+function findPath(trie, path) {
+    return new Promise((resolve, reject) => {
+        trie.findPath(path, (err, rawNode, reminder, stack) => {
+            resolve(rawStack(stack))
+      })
+    })
+}
+                       
+async function build(tx, block, web3) {
+    let trie = new Trie()
+    for (var i = 0; i < block.transactions.length; i++) {
+        var siblingTx = await web3.eth.getTransaction(block.transactions[i])
+        let path = rlp.encode(siblingTx.transactionIndex);
+        const signedSiblingTx = new EthereumTx(squanchTx(siblingTx));
+        const rawSignedSiblingTx = signedSiblingTx.serialize();
+        await putTrie(trie, path, rawSignedSiblingTx)
+    }
+    return findPath(trie, rlp.encode(tx.transactionIndex))
+}
+
+function build__(tx, block) {
   return new Promise((resolve, reject) => {
     let txTrie = new Trie();
     async.map(block.transactions, (siblingTx, cb) => {

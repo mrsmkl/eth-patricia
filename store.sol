@@ -124,6 +124,13 @@ contract Blockchain is Util {
         b.transactions[num] = txHash;
     }
 
+    function transactionDebug(bytes32 aHash, uint num, bytes parentNodes, uint blk) public returns (bytes path, bool res, uint pos, bytes32 nkey, bytes nibbles) {
+        BlockData storage b = block_data[block_hash[blk]];
+        path = rlpInteger(num);
+        nkey = b.transactionRoot;
+        (res, pos, nibbles) = MerklePatriciaProof.verifyDebug(aHash, path, parentNodes, b.transactionRoot);
+    }
+    
     // proof for account
     function accountInBlock(bytes32 aHash, address addr, bytes parentNodes, uint blk) public {
         BlockData storage b = block_data[block_hash[blk]];

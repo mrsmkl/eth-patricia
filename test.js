@@ -1,16 +1,17 @@
 
-var Web3 = require("../web3.js/packages/web3")
-var web3 = new Web3()
-var fs = require("fs")
+const Web3 = require("../web3.js/packages/web3")
+const web3 = new Web3()
+const fs = require("fs")
 const RLP = require('rlp')
 const util = require('ethereumjs-util')
+const txProof = require("./txProof")
 
 var host = process.argv[2] || "localhost"
 
 // web3.setProvider(new web3.providers.WebsocketProvider('ws://' + host + ':8546'))
 web3.setProvider(new web3.providers.HttpProvider('http://' + host + ':8545'))
 
-var dir = "./compiled/"
+const dir = "./compiled/"
 
 var send_opt
 
