@@ -33,8 +33,8 @@ function findPath(trie, path) {
       })
     })
 }
-                       
-async function build(tx, block, web3) {
+
+async function build(idx, block, web3) {
     let trie = new Trie()
     for (var i = 0; i < block.transactions.length; i++) {
         var siblingTx = await web3.eth.getTransaction(block.transactions[i])
@@ -43,7 +43,7 @@ async function build(tx, block, web3) {
         const rawSignedSiblingTx = signedSiblingTx.serialize();
         await putTrie(trie, path, rawSignedSiblingTx)
     }
-    return findPath(trie, rlp.encode(tx.transactionIndex))
+    return findPath(trie, rlp.encode(idx))
 }
 
 function build__(tx, block) {

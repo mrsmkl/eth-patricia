@@ -1,5 +1,4 @@
 
-
 const Web3 = require("../web3.js/packages/web3")
 const web3 = new Web3()
 const fs = require("fs")
@@ -31,39 +30,32 @@ async function doDeploy() {
     send_opt = {gas:4700000, from:accts[0]}
     var store = await createContract("Blockchain")
     console.log("Contract at", store.options.address)
-    var my_tx = await store.methods.storeHashes(20).send(send_opt)
-    console.log("storing hashes", my_tx)
-    
     var bnum = await web3.eth.getBlockNumber()
     var blk = await web3.eth.getBlock(bnum)
     var bheader = await web3.eth.getBlockHeader(blk.hash)
     console.log("current block", blk)
     console.log("Checking hash", hash(bheader))
     var tx = await store.methods.storeHashes(20).send(send_opt)
-    console.log("storing hashes again", tx.status)
-
+    console.log("storing hashes", tx.status)
+    var acc_dta = await web3.eth.getAccountRLP(blk.hash, store.options.address)
+    console.log("countract account state", RLP.decode(acc_dta))
     var tx = await store.methods.storeHeader(bnum, bheader).send(send_opt)
     console.log("storing header", tx.status)
-
-    var lst = await txProof.build(2, blk, web3)
-    var proof_rlp = RLP.encode(lst)
-    console.log("proof for transaction", lst, proof_rlp, "... its length is", proof_rlp.length)
-    console.log("checking hash", util.sha3(RLP.encode(lst[0])), util.sha3(""))
-    console.log(await store.methods.transactionDebug("0x"+util.sha3("").toString("hex"), 2, "0x"+proof_rlp.toString("hex"), bnum).call(send_opt))
-    var tx = await store.methods.transactionInBlock("0x"+util.sha3("").toString("hex"), 2, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
-    console.log("Proving transaction in block", tx.status)
-
-    /*
-    var lst = await txProof.build(my_tx.transactionIndex, blk, web3)
-    var proof_rlp = RLP.encode(lst)
-    console.log("proof for transaction", lst, proof_rlp, "... its length is", proof_rlp.length)
-    console.log("checking hash", util.sha3(RLP.encode(lst[0])))
-    console.log(await store.methods.transactionDebug(my_tx.transactionHash, my_tx.transactionIndex, "0x"+proof_rlp.toString("hex"), bnum).call(send_opt))
-    var tx = await store.methods.transactionInBlock(my_tx.transactionHash, my_tx.transactionIndex, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
-    console.log("Proving transaction in block", tx.status)
-    */
+    var info = await store.methods.blockData(bnum).call(send_opt)
+    console.log("this is the info", info)
+    var tx = await store.methods.storeAccount(acc_dta).send(send_opt)
+    var ahash = hash(acc_dta)
+    console.log("storing account", tx.status, ahash, util.sha3(ahash))
+    var proof = await web3.eth.getAccountProof(blk.hash, "0x"+hash(store.options.address).toString("hex"))
+    var proof_rlp = RLP.encode(proof.map(a => RLP.decode(a)))
+    console.log("proof for account", proof.map(a => [RLP.decode(a), hash(a)]))
+    // console.log("but is it here", RLP.decode(proof[proof.length-1]))
+    console.log("account proof length", proof_rlp.length, ahash, "0x"+hash(store.options.address).toString("hex"))
+    // console.log(await store.methods.accountDebug("0x"+ahash.toString("hex"), store.options.address, "0x"+proof_rlp.toString("hex"), bnum).call(send_opt))
+    var tx = await store.methods.accountInBlock("0x"+ahash.toString("hex"), store.options.address, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
+    console.log("Proving account in block", tx.status)
+    console.log(await store.methods.accountData(bnum, store.options.address).call(send_opt))
 }
 
 doDeploy()
-
 

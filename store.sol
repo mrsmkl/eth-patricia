@@ -8,6 +8,12 @@ import "./BytesLib.sol";
 // Contract for mirroring needed parts of the blockchain
 contract Blockchain is Util {
 
+    function Blockchain() public {
+        assembly {
+            sstore(0x12000023000034000045000056, 0x999988887777666655554444333322221111)
+        }
+    }
+
     mapping (uint => bytes32) block_hash;
 
     struct BlockData {
@@ -17,7 +23,7 @@ contract Blockchain is Util {
         mapping (address => bytes32) accounts;  // element 1 means not found
         uint numTransactions;
     }
-    
+
     mapping (bytes32 => BlockData) block_data;
 
     struct TransactionData {
@@ -121,7 +127,7 @@ contract Blockchain is Util {
         BlockData storage b = block_data[block_hash[blk]];
         bytes memory path = rlpInteger(num);
         require(MerklePatriciaProof.verify(txHash, path, parentNodes, b.transactionRoot));
-        b.transactions[num] = txHash;
+        b.transactions[num] = txHash == keccak256() ? bytes32(uint(1)) : txHash;
     }
 
     function transactionDebug(bytes32 aHash, uint num, bytes parentNodes, uint blk) public returns (bytes path, bool res, uint pos, bytes32 nkey, bytes nibbles) {
@@ -146,6 +152,12 @@ contract Blockchain is Util {
         (res, pos, nibbles) = MerklePatriciaProof.verifyDebug(aHash, path, parentNodes, b.stateRoot);
     }
     */
+
+    function accountData(uint n, address addr) public view returns (bytes32) {
+        BlockData storage b = block_data[block_hash[n]];
+        AccountData storage dta = accounts[b.accounts[addr]];
+        return dta.storageRoot;
+    }
 
     // proof for storage
     function storageInAccount(bytes32 aHash, bytes32 data, bytes32 ptr, bytes parentNodes) public {

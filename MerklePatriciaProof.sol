@@ -61,9 +61,9 @@ library MerklePatriciaProof {
                         return false;
                     }
                 }
-                //extension node
+                //extension node ... test if means that it is empty value
                 if(_nibblesToTraverse(RLP.toData(currentNodeList[0]), path, pathPtr) == 0) {
-                    return false;
+                    return (keccak256() == value);
                 }
 
                 nodeKey = RLP.toBytes32(currentNodeList[1]);
@@ -126,6 +126,7 @@ library MerklePatriciaProof {
                 //extension node
                 if(_nibblesToTraverse(RLP.toData(currentNodeList[0]), path, pathPtr) == 0) {
                       loc = 6;
+                      res = (keccak256() == value);
                     return;
                 }
 
