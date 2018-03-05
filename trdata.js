@@ -29,13 +29,16 @@ function getInteger(str) {
     return res
 }
 
-async function main(bnum) {
+async function main() {
     var lst = getList()
-    console.log(lst)
     var blk = await web3.eth.getBlock(getInteger(lst[0]))
-    var res = blk.transactions.length
-    fs.writeFileSync("custom.out", conv(res.toString(16)), "hex")
+    var tr_hash = blk.transactions[getInteger(lst[1])]
+    var tr = await web3.eth.getTransaction(tr_hash)
+    // console.log(tr)
+    console.log(tr.input)
+    fs.writeFileSync("custom.out", conv(tr.input.substr(2,32)), "hex")
 }
 
-main(10)
+main()
+
 

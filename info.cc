@@ -3,16 +3,16 @@
 #include <stdint.h>
 #include <vector>
     
-extern void readBlockTransactions(int f_num);
-extern void readTransactionSender(int f_num);
-extern void readTransactionReceiver(int f_num);
-extern void readTransactionData(int f_num);
-extern void readAccountStorage(int f_num);
+extern "C" void readBlockTransactions(int f_num);
+extern "C" void readTransactionSender(int f_num);
+extern "C" void readTransactionReceiver(int f_num);
+extern "C" void readTransactionData(int f_num);
+extern "C" void readAccountStorage(int f_num);
 
-extern int getInternalFile(int fd);
-extern void internalSync(int fd);
-extern void internalSync2(int fd);
-extern void internalStep();
+extern "C" int getInternalFile(int fd);
+extern "C" void internalSync(int fd);
+extern "C" void internalSync2(int fd);
+extern "C" void internalStep(int fd);
 
 int num(char c) {
     switch (c) {
@@ -71,7 +71,7 @@ int blockTransactions(int blk) {
     fclose(f);
     printf("Calling custom instruction for file %d\n", num);
     internalSync(num);
-    internalStep();
+    internalStep(num);
     readBlockTransactions(num);
     internalSync2(num);
     
@@ -90,14 +90,14 @@ uint8_t *transactionSender(int blk, int tr_num) {
     fclose(f);
     printf("Calling custom instruction for file %d\n", num);
     internalSync(num);
-    internalStep();
+    internalStep(num);
     readTransactionSender(num);
     internalSync2(num);
     
     f = fopen("block_inst", "rb");
-    uint8_t *buf = (uint8_t*)malloc(20);
-    fread(buf, 1, 20, f);
-    return buf;
+    uint8_t *buf = (uint8_t*)malloc(32);
+    fread(buf, 1, 32, f);
+    return buf+12;
 }
 
 uint8_t *transactionReceiver(int blk, int tr_num) {
@@ -109,14 +109,14 @@ uint8_t *transactionReceiver(int blk, int tr_num) {
     fclose(f);
     printf("Calling custom instruction for file %d\n", num);
     internalSync(num);
-    internalStep();
+    internalStep(num);
     readTransactionReceiver(num);
     internalSync2(num);
     
     f = fopen("block_inst", "rb");
-    uint8_t *buf = (uint8_t*)malloc(20);
-    fread(buf, 1, 20, f);
-    return buf;
+    uint8_t *buf = (uint8_t*)malloc(32);
+    fread(buf, 1, 32, f);
+    return buf+12;
 }
 
 uint8_t *transactionData(int blk, int tr_num) {
@@ -128,7 +128,7 @@ uint8_t *transactionData(int blk, int tr_num) {
     fclose(f);
     printf("Calling custom instruction for file %d\n", num);
     internalSync(num);
-    internalStep();
+    internalStep(num);
     readTransactionData(num);
     internalSync2(num);
 
@@ -148,7 +148,7 @@ uint8_t *accountStorage(int blk, std::vector<uint8_t> address, std::vector<uint8
     fclose(f);
     printf("Calling custom instruction for file %d\n", num);
     internalSync(num);
-    internalStep();
+    internalStep(num);
     readAccountStorage(num);
     internalSync2(num);
 

@@ -1,4 +1,4 @@
-
+#!/usr/bin/node
 
 const fs = require("fs")
 const Web3 = require("../web3.js/packages/web3")
@@ -35,7 +35,8 @@ async function main() {
     var tr_hash = blk.transactions[getInteger(lst[1])]
     var tr = await web3.eth.getTransaction(tr_hash)
     console.log(tr.to)
-    fs.writeFileSync("custom.out", conv(tr.to.substr(2)), "hex")
+    if (!tr.to) fs.writeFileSync("custom.out", conv("00"), "hex")
+    else fs.writeFileSync("custom.out", conv(tr.to.substr(2)), "hex")
 }
 
 main()

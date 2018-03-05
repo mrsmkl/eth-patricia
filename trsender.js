@@ -1,4 +1,4 @@
-
+#!/usr/bin/node
 
 const fs = require("fs")
 const Web3 = require("../web3.js/packages/web3")

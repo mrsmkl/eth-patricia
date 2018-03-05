@@ -34,7 +34,7 @@ async function main() {
     await vote.methods.yes().send({gas:4700000, from:accts[3], gasPrice:1})
     console.log("Vote 4")
     var bnum2 = await web3.eth.getBlockNumber()
-    console.log("Start block", bnum1, "End block", bnum2)
+    console.log("Start block", bnum1.toString(16), "End block", bnum2.toString(16))
 }
 
 main()
