@@ -205,6 +205,10 @@ contract Blockchain is Util {
         return tr.sender;
     }
 
+    function transactionDebug(uint blk, uint num) public view returns (bytes32) {
+        return block_data[block_hash[blk]].transactions[num];
+    }
+    
     function transactionReceiver(uint blk, uint num) public view returns (address) {
         bytes32 tr_hash = block_data[block_hash[blk]].transactions[num];
         require (uint(tr_hash) > 1);

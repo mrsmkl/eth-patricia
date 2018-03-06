@@ -93,43 +93,58 @@ async function handleNumTr(numtr, err, ev) {
     
     var bnum = parseInt("0x"+data[0])
     
-    console.log("Event for num tr", ev.returnValues, bnum, trnum)
+    console.log("Event for num tr", ev.returnValues, bnum)
     
     // generate proof
     var blk = await web3.eth.getBlock(bnum)
-    var trnum2 = blt.transactions.length
+    var trnum2 = blk.transactions.length
     var trnum1 = trnum2-1
     
     var bheader = await web3.eth.getBlockHeader(blk.hash)
-    var tx = store.methods.storeHeader(bnum, bheader).send(send_opt)
+    store.methods.storeHeader(bnum, bheader).send(send_opt)
     console.log("storing header")
     
-    setTimeout(async () => console.log(await store.methods.blockData(bnum).call(send_opt)), 1000)
-    
+    setTimeout(async () => console.log("block data", await store.methods.blockData(bnum).call(send_opt)), 1000)
+
     var my_tx = await web3.eth.getTransaction(blk.transactions[trnum1])
-    console.log(my_tx)
     var lst = await txProof.build(my_tx.transactionIndex, blk, web3)
     var proof_rlp = RLP.encode(lst)
     console.log("proof for transaction", lst, proof_rlp, "... its length is", proof_rlp.length)
     console.log("checking hash", util.sha3(RLP.encode(lst[0])))
-    console.log(await store.methods.transactionDebug(my_tx.hash, my_tx.transactionIndex, "0x"+proof_rlp.toString("hex"), bnum).call(send_opt))
-    var tx = store.methods.transactionInBlock(my_tx.hash, my_tx.transactionIndex, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
+    console.log("hmm", await store.methods.transactionDebug(my_tx.hash, my_tx.transactionIndex, "0x"+proof_rlp.toString("hex"), bnum).call(send_opt))
+    store.methods.transactionInBlock(my_tx.hash, my_tx.transactionIndex, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
     var tx_rlp = tx2rlp(my_tx)
     store.methods.storeTransaction(tx_rlp).send(send_opt)
     
-    // did it work?
     setTimeout(async () => {
+     var lst = await txProof.build(trnum2, blk, web3)
+     var proof_rlp = RLP.encode(lst)
+     console.log("proof for transaction", lst, proof_rlp, "... its length is", proof_rlp.length)
+     console.log("checking hash", util.sha3(RLP.encode(lst[0])), util.sha3(""))
+     console.log(await store.methods.transactionDebug("0x"+util.sha3("").toString("hex"), 2, "0x"+proof_rlp.toString("hex"), bnum).call(send_opt))
+     store.methods.transactionInBlock("0x"+util.sha3("").toString("hex"), trnum2, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
+     console.log("Proving empty transaction in block")
+     
+     setTimeout(async () => { 
+         console.log("Transaction 1", await store.methods.transactionDebug(bnum, trnum1).call());
+         console.log("Transaction 2", await store.methods.transactionDebug(bnum, trnum2).call());
+         store.methods.updateNumTransactions(bnum, trnum2).send(send_opt)
+     }, 1000)
+
+     // did it work?
+     setTimeout(async () => {
         console.log(await store.methods.trInfo("0x"+hash(tx_rlp).toString("hex")).call(send_opt))
         console.log(await store.methods.transactionSender(bnum, trnum1).call(send_opt))
-        var sender = await store.methods.transactionSender(bnum, trnum1).call(send_opt)
-        
+        console.log(await store.methods.blockTransactions(bnum).call(send_opt))
+
         numtr.methods.submitProof(id, data.map(a => "0x"+a), 2).send(send_opt)
         setTimeout(async () => {
-            var root = await numtr.methods.dataMerkle([conv(send_opt.from)], 0, 2).call()
+            var root = await numtr.methods.dataMerkle([conv("01")], 0, 2).call()
             console.log("My root", root)
             console.log("did it work?", await numtr.methods.resolved(id, root, 32).call(send_opt))
         }, 1000)
         
+     }, 2000)
     }, 1000)
     
 }
@@ -158,7 +173,6 @@ async function handleTr(trsender, err, ev) {
     setTimeout(async () => console.log(await store.methods.blockData(bnum).call(send_opt)), 1000)
     
     var my_tx = await web3.eth.getTransaction(blk.transactions[trnum])
-    console.log(my_tx)
     var lst = await txProof.build(my_tx.transactionIndex, blk, web3)
     var proof_rlp = RLP.encode(lst)
     console.log("proof for transaction", lst, proof_rlp, "... its length is", proof_rlp.length)
@@ -167,8 +181,6 @@ async function handleTr(trsender, err, ev) {
     var tx = store.methods.transactionInBlock(my_tx.hash, my_tx.transactionIndex, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
     var tx_rlp = tx2rlp(my_tx)
     store.methods.storeTransaction(tx_rlp).send(send_opt)
-    // console.log("Proving transaction in block", tx.status)
-    console.log("geth websockets won't work", tx_rlp)
     
     // did it work?
     setTimeout(async () => {
@@ -274,6 +286,17 @@ async function testSender(trsender) {
     trsender.methods.init(root, 0, 0, send_opt.from, send_opt.from).send(send_opt)
 }
 
+async function testNumber(numtr) {
+    var bnum = await web3.eth.getBlockNumber()
+    var my_tx = store.methods.storeHashes(20).send(send_opt)
+    // console.log(my_tx.status)
+    var lst = [bnum-10]
+    var root = await merkle(numtr, lst)
+    console.log("Root", root)
+    
+    numtr.methods.init(root, 0, 0, send_opt.from, send_opt.from).send(send_opt)
+}
+
 async function testStorage(getstorage) {
     var bnum = await web3.eth.getBlockNumber()
     var my_tx = store.methods.storeHashes(20).send(send_opt)
@@ -296,7 +319,7 @@ async function main() {
     var trdata = createContract("TrData", config.trdata)
     var getstorage = createContract("GetStorage", config.getstorage)
 
-    numtr.events.AddedObligation(handleNumTr)
+    numtr.events.AddedObligation((err,ev) => handleNumTr(numtr, err, ev))
     trsender.events.AddedObligation((err,ev) => handleTr(trsender, err, ev))
     trreceiver.events.AddedObligation((err,ev) => handleTr(trreceiver, err, ev))
     trdata.events.AddedObligation((err,ev) => handleTr(trdata, err, ev))
@@ -304,7 +327,8 @@ async function main() {
     
     console.log("Listening events")
     // await testSender(trsender)
-    await testStorage(getstorage)
+    // await testStorage(getstorage)
+    await testNumber(numtr)
 }
 
 main()
