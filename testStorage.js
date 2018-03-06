@@ -74,7 +74,9 @@ async function doDeploy() {
     console.log("storage proof", proof.map(a => [RLP.decode(a), hash(a)]))
     console.log("cell as rlp", hex2rlp("999988887777666655554444333322221111"), "ptr", Buffer.from(hash(make32("12000023000034000045000056"))).toString("hex"))
 //    console.log(await store.methods.storageDebug("0x"+ahash.toString("hex"), hex2rlp("999988887777666655554444333322221111"), make32("12000023000034000045000056"), "0x"+proof_rlp.toString("hex")).call(send_opt))
-    var tx = await store.methods.storageInAccount("0x"+ahash.toString("hex"), hex2rlp("999988887777666655554444333322221111"), make32("12000023000034000045000056"), "0x"+proof_rlp.toString("hex")).send(send_opt)
+//    var tx = await store.methods.storageInAccount("0x"+ahash.toString("hex"), hex2rlp("999988887777666655554444333322221111"), make32("12000023000034000045000056"), "0x"+proof_rlp.toString("hex")).send(send_opt)
+    console.log(await store.methods.storageDebug("0x"+ahash.toString("hex"), "0x", make32("12000023000034000045000057"), "0x"+proof_rlp.toString("hex")).call(send_opt))
+    var tx = await store.methods.storageInAccount("0x"+ahash.toString("hex"), "0x", make32("12000023000034000045000057"), "0x"+proof_rlp.toString("hex")).send(send_opt)
     console.log("Proving storage of account in block", tx.status)
 }
 

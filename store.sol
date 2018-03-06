@@ -174,8 +174,13 @@ contract Blockchain is Util {
         AccountData storage b = accounts[aHash];
         bytes memory path = bytes32ToBytes(keccak256(ptr));
         require(MerklePatriciaProof.verify(keccak256(data), path, parentNodes, b.storageRoot));
-        RLP.RLPItem memory item = RLP.toRLPItem(data);
-        b.stuff[ptr] = RLP.toBytes32(item);
+        if (data.length == 0) {
+            b.stuff[ptr] = 0x0;
+        }
+        else {
+            RLP.RLPItem memory item = RLP.toRLPItem(data);
+            b.stuff[ptr] = RLP.toBytes32(item);
+        }
         b.stuff_checked[ptr] = true;
     }
 
