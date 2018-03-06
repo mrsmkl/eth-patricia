@@ -92,8 +92,8 @@ async function handleNumTr(err, ev) {
 
 var store
 
-async function handleTrSender(err, ev) {
-    if (err) return console.log("handle tr sender", err)
+async function handleTr(trsender, err, ev) {
+    if (err) return console.log("handle tr", err)
     var id = ev.returnValues.id
     var root = ev.returnValues.state
     var solver = ev.returnValues.solver
@@ -103,8 +103,7 @@ async function handleTrSender(err, ev) {
     var bnum = parseInt("0x"+data[0])
     var trnum = parseInt("0x"+data[1])
     
-    console.log("Event at tr sender", ev.returnValues, bnum, trnum)
-    
+    console.log("Event at tr", ev.returnValues, bnum, trnum)
     
     // generate proof
     var blk = await web3.eth.getBlock(bnum)
@@ -131,9 +130,19 @@ async function handleTrSender(err, ev) {
     setTimeout(async () => {
         console.log(await store.methods.trInfo("0x"+hash(tx_rlp).toString("hex")).call(send_opt))
         console.log(await store.methods.transactionSender(bnum, trnum).call(send_opt))
+        var sender = await store.methods.transactionSender(bnum, trnum).call(send_opt)
+        
+        trsender.methods.submitProof(id, data.map(a => "0x"+a), 2).send(send_opt)
+        setTimeout(async () => {
+            var root = await trsender.methods.dataMerkle([conv(send_opt.from)], 0, 2).call()
+            console.log("My root", root)
+            console.log("did it work?", await trsender.methods.resolved(id, root, 32).call(send_opt))
+        }, 1000)
+        
     }, 1000)
 }
 
+/*
 async function handleTrReceiver(err, ev) {
     if (err) return console.log("handle tr recv", err)
     var id = ev.returnValues.id
@@ -146,13 +155,67 @@ async function handleTrData(err, ev) {
     var id = ev.returnValues.id
     var root = ev.returnValues.state
     var solver = ev.returnValues.solver
-}
+}*/
 
-async function handleGetStorage(err, ev) {
+async function handleGetStorage(c, err, ev) {
     if (err) return console.log("handle storage", err)
     var id = ev.returnValues.id
     var root = ev.returnValues.state
     var solver = ev.returnValues.solver
+
+    var data = await readData(root)
+    
+    var bnum = parseInt("0x"+data[0])
+    var addr = "0x"+data[1]
+    var ptr = "0x"+data[2]
+
+    console.log("Event at storage", ev.returnValues, bnum, addr, ptr)
+    
+    // generate proof; block, account, cell
+    var blk = await web3.eth.getBlock(bnum)
+    var bheader = await web3.eth.getBlockHeader(blk.hash)
+    store.methods.storeHeader(bnum, bheader).send(send_opt)
+    console.log("storing header")
+    
+    setTimeout(async () => console.log(await store.methods.blockData(bnum).call(send_opt)), 1000)
+    
+    // account
+    var acc_dta = await web3.eth.getAccountRLP(blk.hash, store.options.address)
+    var ahash = hash(acc_dta)
+    console.log("contract account state", RLP.decode(acc_dta), ahash)
+    store.methods.storeAccount(acc_dta).send(send_opt)
+
+    // account in block
+    var proof = await web3.eth.getAccountProof(blk.hash, "0x"+hash(store.options.address).toString("hex"))
+    var proof_rlp = RLP.encode(proof.map(a => RLP.decode(a)))
+    console.log("proof for account", proof.map(a => [RLP.decode(a), hash(a)]))
+    console.log("account proof length", proof_rlp.length, ahash, "0x"+hash(store.options.address).toString("hex"))
+    store.methods.accountInBlock("0x"+ahash.toString("hex"), store.options.address, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
+    console.log("Proving account in block")
+    setTimeout(async () => console.log(await store.methods.accountData(bnum, store.options.address).call(send_opt)), 1000)
+    
+    var proof = await web3.eth.getStorageProof(blk.hash, store.options.address, "0x"+hash(ptr).toString("hex"))
+    var cell_rlp = await web3.eth.getStorageCell(blk.hash, store.options.address, ptr)
+    console.log("cell", cell_rlp)
+    var proof_rlp = RLP.encode(proof.map(a => RLP.decode(a)))
+    console.log("storage proof", proof.map(a => [RLP.decode(a), hash(a)]))
+    store.methods.storageInAccount("0x"+ahash.toString("hex"), cell_rlp, ptr, "0x"+proof_rlp.toString("hex")).send(send_opt)
+    console.log("Proving storage of account in block")
+    
+    // did it work?
+    setTimeout(async () => {
+        var cell = await store.methods.accountStorage(bnum, "0x"+data[1].substr(24), ptr).call(send_opt)
+        console.log("Cell found", cell)
+        
+        c.methods.submitProof(id, data.map(a => "0x"+a), 2).send(send_opt)
+        setTimeout(async () => {
+            var root = await c.methods.dataMerkle([conv("00")], 0, 2).call()
+            console.log("My root", root)
+            console.log("did it work?", await c.methods.resolved(id, root, 32).call(send_opt))
+        }, 1000)
+        
+    }, 1000)
+    
 }
 
 async function testSender(trsender) {
@@ -166,6 +229,17 @@ async function testSender(trsender) {
     trsender.methods.init(root, 0, 0, send_opt.from, send_opt.from).send(send_opt)
 }
 
+async function testStorage(getstorage) {
+    var bnum = await web3.eth.getBlockNumber()
+    var my_tx = store.methods.storeHashes(20).send(send_opt)
+    // console.log(my_tx.status)
+    var lst = [bnum-10, getstorage.options.address, 0]
+    var root = await merkle(getstorage, lst)
+    console.log("Root", root)
+
+    getstorage.methods.init(root, 0, 0, send_opt.from, send_opt.from).send(send_opt)
+}
+
 async function main() {
     var accts = await web3.eth.getAccounts()
     send_opt = {gas:4700000, from:accts[0]}
@@ -173,18 +247,19 @@ async function main() {
     store = createContract("Blockchain", config.store)
     var numtr = createContract("NumTr", config.numtr)
     var trsender = createContract("TrSender", config.trsender)
-    var trreceiver = createContract("TrReceiver", config.trsender)
-    var trdata = createContract("TrData", config.trreceiver)
+    var trreceiver = createContract("TrReceiver", config.trreceiver)
+    var trdata = createContract("TrData", config.trdata)
     var getstorage = createContract("GetStorage", config.getstorage)
 
     numtr.events.AddedObligation(handleNumTr)
-    trsender.events.AddedObligation(handleTrSender)
-    trreceiver.events.AddedObligation(handleTrReceiver)
-    trdata.events.AddedObligation(handleTrData)
-    getstorage.events.AddedObligation(handleGetStorage)
+    trsender.events.AddedObligation((err,ev) => handleTr(trsender, err, ev))
+    trreceiver.events.AddedObligation((err,ev) => handleTr(trreceiver, err, ev))
+    trdata.events.AddedObligation((err,ev) => handleTr(trdata, err, ev))
+    getstorage.events.AddedObligation((err,ev) => handleGetStorage(getstorage, err, ev))
     
     console.log("Listening events")
-    await testSender(trsender)
+    // await testSender(trsender)
+    await testStorage(getstorage)
 }
 
 main()
