@@ -83,11 +83,55 @@ async function merkle(c, lst) {
     return res
 }
 
-async function handleNumTr(err, ev) {
+async function handleNumTr(numtr, err, ev) {
     if (err) return console.log("handle num tr", err)
     var id = ev.returnValues.id
     var root = ev.returnValues.state
     var solver = ev.returnValues.solver
+
+    var data = await readData(root)
+    
+    var bnum = parseInt("0x"+data[0])
+    
+    console.log("Event for num tr", ev.returnValues, bnum, trnum)
+    
+    // generate proof
+    var blk = await web3.eth.getBlock(bnum)
+    var trnum2 = blt.transactions.length
+    var trnum1 = trnum2-1
+    
+    var bheader = await web3.eth.getBlockHeader(blk.hash)
+    var tx = store.methods.storeHeader(bnum, bheader).send(send_opt)
+    console.log("storing header")
+    
+    setTimeout(async () => console.log(await store.methods.blockData(bnum).call(send_opt)), 1000)
+    
+    var my_tx = await web3.eth.getTransaction(blk.transactions[trnum1])
+    console.log(my_tx)
+    var lst = await txProof.build(my_tx.transactionIndex, blk, web3)
+    var proof_rlp = RLP.encode(lst)
+    console.log("proof for transaction", lst, proof_rlp, "... its length is", proof_rlp.length)
+    console.log("checking hash", util.sha3(RLP.encode(lst[0])))
+    console.log(await store.methods.transactionDebug(my_tx.hash, my_tx.transactionIndex, "0x"+proof_rlp.toString("hex"), bnum).call(send_opt))
+    var tx = store.methods.transactionInBlock(my_tx.hash, my_tx.transactionIndex, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
+    var tx_rlp = tx2rlp(my_tx)
+    store.methods.storeTransaction(tx_rlp).send(send_opt)
+    
+    // did it work?
+    setTimeout(async () => {
+        console.log(await store.methods.trInfo("0x"+hash(tx_rlp).toString("hex")).call(send_opt))
+        console.log(await store.methods.transactionSender(bnum, trnum1).call(send_opt))
+        var sender = await store.methods.transactionSender(bnum, trnum1).call(send_opt)
+        
+        numtr.methods.submitProof(id, data.map(a => "0x"+a), 2).send(send_opt)
+        setTimeout(async () => {
+            var root = await numtr.methods.dataMerkle([conv(send_opt.from)], 0, 2).call()
+            console.log("My root", root)
+            console.log("did it work?", await numtr.methods.resolved(id, root, 32).call(send_opt))
+        }, 1000)
+        
+    }, 1000)
+    
 }
 
 var store
@@ -166,7 +210,7 @@ async function handleGetStorage(c, err, ev) {
     var data = await readData(root)
     
     var bnum = parseInt("0x"+data[0])
-    var addr = "0x"+data[1]
+    var addr = "0x"+data[1].substr(24)
     var ptr = "0x"+data[2]
 
     console.log("Event at storage", ev.returnValues, bnum, addr, ptr)
@@ -180,31 +224,33 @@ async function handleGetStorage(c, err, ev) {
     setTimeout(async () => console.log(await store.methods.blockData(bnum).call(send_opt)), 1000)
     
     // account
-    var acc_dta = await web3.eth.getAccountRLP(blk.hash, store.options.address)
+    var acc_dta = await web3.eth.getAccountRLP(blk.hash, addr)
     var ahash = hash(acc_dta)
     console.log("contract account state", RLP.decode(acc_dta), ahash)
     store.methods.storeAccount(acc_dta).send(send_opt)
 
     // account in block
-    var proof = await web3.eth.getAccountProof(blk.hash, "0x"+hash(store.options.address).toString("hex"))
+    var proof = await web3.eth.getAccountProof(blk.hash, "0x"+hash(addr).toString("hex"))
     var proof_rlp = RLP.encode(proof.map(a => RLP.decode(a)))
     console.log("proof for account", proof.map(a => [RLP.decode(a), hash(a)]))
-    console.log("account proof length", proof_rlp.length, ahash, "0x"+hash(store.options.address).toString("hex"))
-    store.methods.accountInBlock("0x"+ahash.toString("hex"), store.options.address, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
+    console.log("account proof length", proof_rlp.length, ahash, "0x"+hash(addr).toString("hex"))
+    store.methods.accountInBlock("0x"+ahash.toString("hex"), addr, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
     console.log("Proving account in block")
-    setTimeout(async () => console.log(await store.methods.accountData(bnum, store.options.address).call(send_opt)), 1000)
+    setTimeout(async () => console.log(await store.methods.accountData(bnum, addr).call(send_opt)), 1000)
     
-    var proof = await web3.eth.getStorageProof(blk.hash, store.options.address, "0x"+hash(ptr).toString("hex"))
-    var cell_rlp = await web3.eth.getStorageCell(blk.hash, store.options.address, ptr)
+    var proof = await web3.eth.getStorageProof(blk.hash, addr, "0x"+hash(ptr).toString("hex"))
+    var cell_rlp = await web3.eth.getStorageCell(blk.hash, addr, ptr)
     console.log("cell", cell_rlp)
+    if (cell_rlp == "0x80") cell_rlp = "0x"
     var proof_rlp = RLP.encode(proof.map(a => RLP.decode(a)))
     console.log("storage proof", proof.map(a => [RLP.decode(a), hash(a)]))
+    console.log(await store.methods.storageDebug("0x"+ahash.toString("hex"), cell_rlp, ptr, "0x"+proof_rlp.toString("hex")).call(send_opt))
     store.methods.storageInAccount("0x"+ahash.toString("hex"), cell_rlp, ptr, "0x"+proof_rlp.toString("hex")).send(send_opt)
     console.log("Proving storage of account in block")
     
     // did it work?
     setTimeout(async () => {
-        var cell = await store.methods.accountStorage(bnum, "0x"+data[1].substr(24), ptr).call(send_opt)
+        var cell = await store.methods.accountStorage(bnum, addr, ptr).call(send_opt)
         console.log("Cell found", cell)
         
         c.methods.submitProof(id, data.map(a => "0x"+a), 2).send(send_opt)
@@ -215,7 +261,6 @@ async function handleGetStorage(c, err, ev) {
         }, 1000)
         
     }, 1000)
-    
 }
 
 async function testSender(trsender) {
@@ -233,7 +278,7 @@ async function testStorage(getstorage) {
     var bnum = await web3.eth.getBlockNumber()
     var my_tx = store.methods.storeHashes(20).send(send_opt)
     // console.log(my_tx.status)
-    var lst = [bnum-10, getstorage.options.address, 0]
+    var lst = [bnum-10, getstorage.options.address, 1234]
     var root = await merkle(getstorage, lst)
     console.log("Root", root)
 
