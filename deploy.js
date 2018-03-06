@@ -2,6 +2,8 @@
 const fs = require("fs")
 const Web3 = require('web3')
 var web3 = new Web3()
+const RLP = require('rlp')
+const util = require('ethereumjs-util')
 
 var host = process.argv[2] || "programming-progress.com"
 
@@ -59,17 +61,33 @@ async function doDeploy() {
     process.exit(0)
 }
 
+function hash(dta) {
+    return util.sha3(Buffer.from(dta,"hex"))
+}
+
 async function doDeployTx() {
     var accts = await web3.eth.getAccounts()
     send_opt = {gas:4700000, from:accts[0]}
     var c = await createContract("Transaction")
     c.setProvider(web3.currentProvider)
     console.log("contract address", c.options.address)
-    var res = await c.methods.check("0xf8648064830186a09401020304050607080910111213141516171819208084122334451ba0d02ed7f1d0868b5935e1e2e15e99a49a3a0e8b2f7a3c089cd34d8d978dfde1f7a0529cfe3fd05fbb32ebb4d415d35b5a9ae62c2381969d903c6d4f70fe66bd999a").call(send_opt)
+    var res = await c.methods.check("0xf8648064830186a09401020304050607080910111213141516171819208084122334451ba021b407453d4daab0aa3de845d6dfd81ee7f75fe0e88e84a5b0743f742f1853f0a02fc5c0e2cbe3fa77252b3d5b13279aeb95ab12042351fbb0f744f78d2f588968").call(send_opt)
+    console.log(res)
+    var res = await c.methods.check("0xf8648064830186a09401020304050607080910111213141516171819208084122334451ca0985490fb6390efb7d88b609a371e2d623300ca8debd6db4946fa8ee206a27e8aa03979870657e436f7400120120c977488da5a9b5c9dde684c6bde5b0b54aac331").call(send_opt)
+    console.log(res)
+    
+    var x = RLP.decode("0xf888820410018347b7609455dacfa8f7ce50fba76ef7b6b26ed1de78ee8a4680a47cec4fe20000000000000000000000000000000000000000000000000000000000000014820a95a03d7baa2cb542de65f4c355049e533def86c2ecbabc92fbcddc3abef74eb9c50fa05f633c31bbabf77220750926e0b055f8709f6d6b4d3293145d63dceadb174084")
+    console.log(x.slice(0,6), RLP.encode(1337))
+    
+    console.log(hash(RLP.encode(x.slice(0,6).concat([1337, "", ""])).toString("hex")))
+    console.log(hash(RLP.encode(x.slice(0,6)).toString("hex")))
+    console.log(RLP.encode(x.slice(0,6)).toString("hex"))
+
+    var res = await c.methods.check("0xf888820410018347b7609455dacfa8f7ce50fba76ef7b6b26ed1de78ee8a4680a47cec4fe20000000000000000000000000000000000000000000000000000000000000014820a95a03d7baa2cb542de65f4c355049e533def86c2ecbabc92fbcddc3abef74eb9c50fa05f633c31bbabf77220750926e0b055f8709f6d6b4d3293145d63dceadb174084").call(send_opt)
     console.log(res)
     process.exit(0)
 }
 
-doDeploy()
-// doDeployTx()
+// doDeploy()
+doDeployTx()
 

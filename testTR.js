@@ -6,6 +6,27 @@ const fs = require("fs")
 const RLP = require('rlp')
 const util = require('ethereumjs-util')
 const txProof = require("./txProof")
+const EthereumTx = require('ethereumjs-tx')
+
+function tx2rlp(tx) {
+    const signedSiblingTx = new EthereumTx(squanchTx(tx))
+    return signedSiblingTx.serialize()
+}
+
+function tx2rlp(tx) {
+    const signedSiblingTx = new EthereumTx(squanchTx(tx))
+    console.log(signedSiblingTx)
+    return "0x" + Buffer.from(RLP.encode(signedSiblingTx.raw)).toString("hex")
+}
+
+function squanchTx(tx) {
+    console.log(tx)
+    tx.gas = '0x' + parseInt(tx.gas).toString(16)
+    tx.gasPrice = '0x' + parseInt(tx.gasPrice).toString(16)
+    tx.value = '0x' + parseInt(tx.value).toString(16) || '0'
+    tx.data = tx.input
+    return tx
+}
 
 var host = process.argv[2] || "localhost"
 
@@ -45,6 +66,7 @@ async function doDeploy() {
     var tx = await store.methods.storeHeader(bnum, bheader).send(send_opt)
     console.log("storing header", tx.status)
 
+    /*
     var lst = await txProof.build(2, blk, web3)
     var proof_rlp = RLP.encode(lst)
     console.log("proof for transaction", lst, proof_rlp, "... its length is", proof_rlp.length)
@@ -52,8 +74,8 @@ async function doDeploy() {
     console.log(await store.methods.transactionDebug("0x"+util.sha3("").toString("hex"), 2, "0x"+proof_rlp.toString("hex"), bnum).call(send_opt))
     var tx = await store.methods.transactionInBlock("0x"+util.sha3("").toString("hex"), 2, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
     console.log("Proving transaction in block", tx.status)
+    */
 
-    /*
     var lst = await txProof.build(my_tx.transactionIndex, blk, web3)
     var proof_rlp = RLP.encode(lst)
     console.log("proof for transaction", lst, proof_rlp, "... its length is", proof_rlp.length)
@@ -61,7 +83,12 @@ async function doDeploy() {
     console.log(await store.methods.transactionDebug(my_tx.transactionHash, my_tx.transactionIndex, "0x"+proof_rlp.toString("hex"), bnum).call(send_opt))
     var tx = await store.methods.transactionInBlock(my_tx.transactionHash, my_tx.transactionIndex, "0x"+proof_rlp.toString("hex"), bnum).send(send_opt)
     console.log("Proving transaction in block", tx.status)
-    */
+    var my_tx2 = await web3.eth.getTransaction(blk.transactions[my_tx.transactionIndex])
+    var tx_rlp = tx2rlp(my_tx2)
+    var tx = await store.methods.storeTransaction(tx_rlp).send(send_opt)
+    console.log("Adding transaction", tx.status, tx_rlp, hash(tx_rlp))
+    console.log(await store.methods.trInfo("0x"+hash(tx_rlp).toString("hex")).call(send_opt))
+    console.log(await store.methods.transactionSender(bnum, my_tx.transactionIndex).call(send_opt))
 }
 
 doDeploy()

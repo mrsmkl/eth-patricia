@@ -75,7 +75,7 @@ tx.value = 0
 tx.data = '0x12233445'
 tx.to = '0x0102030405060708091011121314151617181920'
 
-var privateKey = new Buffer('e331b6d69882b4cb4ea581d88e0b604039a3de5967688d3dcffdd2270c0fd109', 'hex')
+var privateKey = new Buffer('e331b6d69882b4cb4ea581d88e0b604e39a3de5967688d3dcffdd2270c0fd109', 'hex')
 // We have a signed transaction, Now for it to be fully fundable the account that we signed
 // it with needs to have a certain amount of wei in to. To see how much this
 // account needs we can use the getUpfrontCost() method.
@@ -95,6 +95,7 @@ console.log(tx.serialize().toString('hex'))
 console.log(info(tx.serialize()))
 tx.sign(privateKey)
 console.log(info(tx.serialize()))
+console.log("address", tx.getSenderAddress())
 console.log(info(RLP.encode(tx.to)))
 console.log('--------------------')
 

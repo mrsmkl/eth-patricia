@@ -76,14 +76,15 @@ contract Blockchain is Util {
         return (dta.stateRoot, dta.transactionRoot);
     }
 
-    function transactionSender(bytes32 hash, bytes tr) public pure returns (address) {
+    function readTransactionSender(bytes32 hash, bytes tr) public pure returns (address) {
         // w
         uint v = readInteger(rlpFindBytes(tr, 6));
         // r
         uint r = readInteger(rlpFindBytes(tr, 7));
         // s
         uint s = readInteger(rlpFindBytes(tr, 8));
-        return ecrecover(hash, uint8(v), bytes32(r), bytes32(s));
+        return ecrecover(hash, v == 2710 ? 28 : 27, bytes32(r), bytes32(s));
+//        return ecrecover(hash, uint8(v), bytes32(r), bytes32(s));
     }
 
     function updateNumTransactions(uint blk, uint num) public {
@@ -105,11 +106,19 @@ contract Blockchain is Util {
         d[5] = rlpFindBytes(tr, 5); // data
         
         uint len = d[0].length + d[1].length + d[2].length + d[3].length + d[4].length + d[5].length;
-        bytes32 hash = keccak256(arrayPrefix(len+3), d[0], d[1], d[2], d[3], d[4], d[5], byte(0x1c), bytes2(0x8080));
+        
+        // bytes32 hash = keccak256(arrayPrefix(len), d[0], d[1], d[2], d[3], d[4], d[5]);
+        bytes32 hash = keccak256(arrayPrefix(len+5), d[0], d[1], d[2], d[3], d[4], d[5], bytes5(0x8205398080));
+        // bytes32 hash = keccak256(arrayPrefix(len+5), sliceBytes(tr, rlpSizeLength(tr,0), len), bytes5(0x8080));
         TransactionData storage tr_data = transactions[keccak256(tr)];
-        tr_data.sender = transactionSender(hash, tr);
+        tr_data.sender = readTransactionSender(hash, tr);
         tr_data.to = getAddress(d[3]);
         tr_data.data = d[5]; // probably should remove RLP prefix
+    }
+    
+    function trInfo(bytes32 hash) public view returns (address, address, bytes) {
+        TransactionData storage tr = transactions[hash];
+        return (tr.sender, tr.to, tr.data);
     }
 
     function storeAccount(bytes rlp) public {
@@ -131,7 +140,7 @@ contract Blockchain is Util {
         b.transactions[num] = txHash == keccak256() ? bytes32(uint(1)) : txHash;
     }
 
-    function transactionDebug(bytes32 aHash, uint num, bytes parentNodes, uint blk) public returns (bytes path, bool res, uint pos, bytes32 nkey, bytes nibbles) {
+    function transactionDebug(bytes32 aHash, uint num, bytes parentNodes, uint blk) public view returns (bytes path, bool res, uint pos, bytes32 nkey, bytes nibbles) {
         BlockData storage b = block_data[block_hash[blk]];
         path = rlpInteger(num);
         nkey = b.transactionRoot;
@@ -170,7 +179,7 @@ contract Blockchain is Util {
         b.stuff_checked[ptr] = true;
     }
 
-    function storageDebug(bytes32 aHash, bytes data, bytes32 ptr, bytes parentNodes) public returns (bytes path, bool res, uint pos, bytes32 nkey, bytes nibbles) {
+    function storageDebug(bytes32 aHash, bytes data, bytes32 ptr, bytes parentNodes) public view returns (bytes path, bool res, uint pos, bytes32 nkey, bytes nibbles) {
         AccountData storage b = accounts[aHash];
         path = bytes32ToBytes(keccak256(ptr));
         nkey = b.storageRoot;
@@ -203,6 +212,15 @@ contract Blockchain is Util {
         require (uint(tr_hash) > 1);
         TransactionData storage tr = transactions[tr_hash];
         return tr.data;
+    }
+    
+    function transactionData32(uint blk, uint num) public view returns (bytes32) {
+        bytes memory data = transactionData(blk, num);
+        uint res = 0;
+        for (uint i = 0; i < data.length && i < 32; i++) {
+            res = res*256 + uint(data[i]);
+        }
+        return bytes32(res);
     }
 
     function accountStorage(uint blk, address addr, bytes32 ptr) public view returns (bytes32) {

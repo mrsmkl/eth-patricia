@@ -145,8 +145,8 @@ contract Util {
             uint ilen = integerLength(len);
             bytes memory res2 = new bytes(1+ilen);
             res2[0] = byte(247+ilen);
-            for (uint i = 1; i < ilen; i++) {
-                res2[ilen-i] = byte(len&0xff);
+            for (uint i = 1; i < ilen+1; i++) {
+                res2[ilen-i+1] = byte(len&0xff);
                 len = len/256;
             }
             return res2;

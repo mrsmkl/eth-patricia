@@ -144,6 +144,7 @@ int main(int argc, char**argv) {
 }
 
 /*
+
 /home/sami/emscripten-module-wrapper/../ocaml-offchain/interpreter/wasm -m -input -file record.bin -file input.data \
   -table-size 20 -stack-size 20 -memory-size 25 -wasm globals.wasm -file output.data -file block_inst  -debug-error \
   -custom 200,_readBlockTransactions,/home/sami/patricia/numtr.js \
@@ -151,7 +152,6 @@ int main(int argc, char**argv) {
   -custom 202,_readTransactionSender,/home/sami/patricia/trsender.js \
   -custom 203,_readTransactionData,/home/sami/patricia/trdata.js \
   -custom 204,_readAccountStorage,/home/sami/patricia/getstorage.js
-
 
 */
 
