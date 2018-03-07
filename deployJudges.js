@@ -2,14 +2,6 @@
 const Web3 = require("../web3.js/packages/web3")
 const web3 = new Web3()
 const fs = require("fs")
-const RLP = require('rlp')
-const util = require('ethereumjs-util')
-const txProof = require("./txProof")
-
-const mongoose = require('mongoose')
-mongoose.connect('mongodb://localhost/truebit')
-
-const File = mongoose.model('File', { root: String, data: String })
 
 var host = process.argv[2] || "localhost"
 

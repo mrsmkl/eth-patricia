@@ -27,7 +27,7 @@ function conv(a) {
 function getInteger(str) {
     var res = 0
     for (var i = 0; i < 64; i++) res = parseInt("0x"+str[i]) + res*16
-    console.log(res)
+    console.error(res)
     return res
 }
 
@@ -42,11 +42,11 @@ function make32(str) {
 
 async function main() {
     var lst = getList()
-    console.log(lst)
+    console.error(lst)
     var blk = await web3.eth.getBlock(getInteger(lst[0]))
-    console.log("Account", "0x"+lst[1].substr(24), blk.hash)
+    console.error("Account", "0x"+lst[1].substr(24), blk.hash)
     var cell = await web3.eth.getStorageCell(blk.hash, "0x"+lst[1].substr(24), make32(lst[2]))
-    console.log(cell)
+    console.error(cell)
     fs.writeFileSync("custom.out", conv(cell), "hex")
 }
 

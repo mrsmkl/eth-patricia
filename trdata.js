@@ -25,7 +25,7 @@ function conv(a) {
 function getInteger(str) {
     var res = 0
     for (var i = 0; i < 64; i++) res = parseInt("0x"+str[i]) + res*16
-    console.log(res)
+    console.error(res)
     return res
 }
 
@@ -35,7 +35,7 @@ async function main() {
     var tr_hash = blk.transactions[getInteger(lst[1])]
     var tr = await web3.eth.getTransaction(tr_hash)
     // console.log(tr)
-    console.log(tr.input)
+    console.error(tr.input)
     fs.writeFileSync("custom.out", conv(tr.input.substr(2,32)), "hex")
 }
 

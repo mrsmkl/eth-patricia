@@ -62,9 +62,10 @@ contract Tabulate {
       bytes32 input_file = filesystem.createFileWithContents("input.data", num, input, 4*32);
       
       bytes32[] memory empty = new bytes32[](0);
-      filesystem.addToBundle(bundle, filesystem.createFileWithContents("output.data", num+1000000000, empty, 0));
-      
       bytes32 bundle = filesystem.makeBundle(num);
+      filesystem.addToBundle(bundle, filesystem.createFileWithContents("output.data", num+1000000000, empty, 0));
+      filesystem.addToBundle(bundle, filesystem.createFileWithContents("block_inst", num+2000000000, empty, 0));
+      
       filesystem.addToBundle(bundle, input_file);
       filesystem.finalizeBundleIPFS(bundle, code, init);
       
