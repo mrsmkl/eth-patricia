@@ -6,6 +6,7 @@ solc --abi --optimize --overwrite --bin -o compiled trreceiver.sol
 solc --abi --optimize --overwrite --bin -o compiled trsender.sol
 solc --abi --optimize --overwrite --bin -o compiled trdata.sol
 solc --abi --optimize --overwrite --bin -o compiled getstorage.sol
+solc --abi --optimize --overwrite --bin -o compiled tabulate.sol
 
 em++ -s  NO_EXIT_RUNTIME=0 -std=c++11 -o vote.js -I ~/boost_1_66_0 info.cc vote.cc
 

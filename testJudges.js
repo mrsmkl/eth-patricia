@@ -1,5 +1,4 @@
 
-
 const Web3 = require("../web3.js/packages/web3")
 const web3 = new Web3()
 const fs = require("fs")
