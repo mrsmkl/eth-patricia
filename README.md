@@ -1,7 +1,8 @@
 
 ## Implementation of verifying Merkle proofs for modified merkle patricia trees used in Ethereum blocks
 
-Based on https://github.com/ethereumjs/merkle-patricia-tree/blob/master/proof.js
+Based on https://github.com/GridPlus/cryptobridge-contracts
+and https://github.com/ethereumjs/merkle-patricia-tree/blob/master/proof.js
 
 Description of these trees, including RLP and hex-prefixes: http://yellowpaper.io
 
