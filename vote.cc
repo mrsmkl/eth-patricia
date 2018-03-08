@@ -103,7 +103,7 @@ int main(int argc, char**argv) {
     fclose(f);
     
     u256 yes_data = 0x4c6c9b78;
-    u256 no_data;
+    u256 no_data = 0xb6c52ae8;
     
     int start = int(start_block);
     int end = int(end_block);

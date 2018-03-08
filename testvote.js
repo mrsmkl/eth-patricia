@@ -24,6 +24,10 @@ async function main() {
     send_opt = {gas:4700000, from:accts[0]}
     var vote = await createContract("Vote")
     console.log("Contract at", vote.options.address)
+    await vote.methods.setBalance(123).send({gas:4700000, from:accts[0], gasPrice:1})
+    await vote.methods.setBalance(234).send({gas:4700000, from:accts[1], gasPrice:1})
+    await vote.methods.setBalance(321).send({gas:4700000, from:accts[2], gasPrice:1})
+    await vote.methods.setBalance(345).send({gas:4700000, from:accts[3], gasPrice:1})
     var bnum1 = await web3.eth.getBlockNumber()
     await vote.methods.yes().send({gas:4700000, from:accts[0], gasPrice:1})
     console.log("Vote 1")

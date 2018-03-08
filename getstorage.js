@@ -46,6 +46,7 @@ async function main() {
     var blk = await web3.eth.getBlock(getInteger(lst[0]))
     console.error("Account", "0x"+lst[1].substr(24), blk.hash)
     var cell = await web3.eth.getStorageCell(blk.hash, "0x"+lst[1].substr(24), make32(lst[2]))
+    cell = RLP.decode(cell).toString("hex")
     console.error(cell)
     fs.writeFileSync("custom.out", conv(cell), "hex")
 }
